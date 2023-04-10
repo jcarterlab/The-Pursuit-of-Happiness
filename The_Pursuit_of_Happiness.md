@@ -152,6 +152,6 @@ Missing values in the World happiness Report data were removed due to
 the high availability of data. A better approach however would have been
 to impute them through machine learning predictions based on NA free
 columns. Also, data for sunshine hours were simulated across multiple
-years by duplicating a each country’s value multiple times. Although
-these values are not likely to change much each year, this is generally
-not a good practice and should be avoided where possible.
+years by duplicating each country’s value multiple times. Although these
+values are not likely to change much each year, this is generally not a
+good practice and should be avoided where possible.
