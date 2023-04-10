@@ -1,0 +1,263 @@
+---
+title: "The Pursuit of Happiness"
+author: "Jack Carter"
+date: "4/8/2023"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(ggplot2)
+library(ggthemes)
+
+# sets the working directory. 
+setwd("C://Users//HUAWEI//Desktop//Projects//The-Pursuit-of-Happiness//Data")
+
+# reads in the processed sunshine dataframe. 
+initial_df <- read_xlsx('integrated_data.xls')
+
+# defines the y and x variables to be used in the linear model
+y = 'Life Ladder'
+
+x <- c('Log GDP per capita', 'Social support',
+       'Healthy life expectancy at birth', 'Freedom to make life choices',
+       'Generosity', 'Perceptions of corruption', 'sun')
+
+# a working dataframe with only y and x variables
+df <- initial_df[y] %>% cbind(initial_df[x]) %>% tibble()
+
+# checks if a row contains na values
+check_row_clean <- function(row) {
+  if(mean(is.na(row))>0) {
+    return(FALSE)
+  } 
+  else{
+    return(TRUE)
+  }
+}
+
+# calculates z scores for a given column
+get_zscores <- function(col) {
+  avg <- mean(col)
+  sd <- sd(col)
+  z_scores <- list()
+  for(i in 1:length(col)) {
+    z_scores[i] <- (col[i]-avg) / sd
+  }
+  return(unlist(z_scores))
+}
+
+# combines previous preprocessing steps
+clean_data <- function(df) {
+  # filters the dataframe for only na free rows
+  clean_list <- apply(df, 1, check_row_clean)
+  clean_df <- df[clean_list,]
+  # converts the dataframe columns into z scores
+  z_list <- apply(clean_df, 2, get_zscores)
+  normalized_df <- as_tibble(z_list)
+  return(normalized_df)
+}
+
+# my personal plot theme for data visualizations. 
+my_theme <- theme_economist_white(gray_bg = FALSE) +
+  theme(plot.title = element_text(hjust = 0.5,
+                                  vjust = 15,
+                                  size = 8,
+                                  color = "#474747"),
+        plot.margin = unit(c(1.5, 1, 1.5, 1), "cm"),
+        axis.text = element_text(size = 9,
+                                 color = "gray30"),
+        axis.text.x=element_text(vjust = -2.5),
+        axis.title.x = element_text(size = 9,
+                                    color = "gray30",
+                                    vjust = -10),
+        axis.title.y = element_text(size = 9,
+                                    color = "gray30",
+                                    vjust = 10),
+        legend.direction = "vertical", 
+        legend.position = "right",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 11,
+                                   color = "gray20"),
+        legend.margin=margin(1, -15, 1, 0),
+        legend.spacing.x = unit(0.25, "cm"),
+        legend.key.size = unit(1, "cm"), 
+        legend.key.height = unit(0.75, "cm"),
+        strip.text = element_text(hjust = 0.5,
+                                  vjust = 1,
+                                  size = 8,
+                                  color = "#474747"),
+        panel.spacing = unit(2, "lines"))
+
+```
+
+## **Summary**
+
+Many people think moving somewhere sunny would make them happier. But [research](https://journals.sagepub.com/doi/abs/10.1111/1467-9280.00066) from Nobel prize winning laureate Daniel Kahneman  suggests that weather plays virtually no role in our happiness. His findings are supported here with multiple regression analysis using World Happiness Report and Kaggle sunshine hours data. The implication is that even if something makes us happier in the short-run, it might just become our new normal in the long-run. 
+
+<br/>
+
+## **Data**
+
+#### **Sources**
+
+* [World Happiness Report (2022)](https://worldhappiness.report/ed/2022/#appendices-and-data)
+* [Kaggle Sunshine duration by city (2022)](https://www.kaggle.com/datasets/prasertk/sunshine-duration-by-city)
+
+<br/>
+
+#### **Dependent variable**
+
+* Happiness self-evaluations
+
+<br/>
+
+#### **Explanatory variables**
+
+* Sunshine hours
+* Log GDP per capita
+* Social support, healthy life expectancy at birth
+* Freedom to make life choices
+* Generosity
+* Perceptions of corruption
+
+<br/>
+
+## **Method**
+
+The datasets were merged by country name. All non-matching country names were examined and changed where different names were used. This yeilded 118 matching countries. Happiness data rows with NA values were discarded. Sunshine hours values were averaged by country and then duplicated to match happiness data years (see Limitations below). 
+
+<br/>
+
+## **Analysis**
+
+### **1) All countries**
+
+A regression model was fit on all 118 countries using all explanatory variables.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, dpi=600}
+
+# returns a clean dataframe
+clean_df <- clean_data(df)
+
+# checks for remaining na values
+#sum(is.na(clean_df))
+
+# renames the life ladder column
+clean_df <- rename(clean_df, life_ladder = 'Life Ladder')
+
+# creates a faceted scatter plot
+clean_df %>%
+  ggplot(aes(y=life_ladder, x=sun)) +
+  geom_point(size = 1, alpha=0.6, col='purple') +
+  geom_smooth(method='lm', formula=y~x) +
+  ggtitle("Sunshine hours") +
+  xlab("Sunshine hours (score)") +
+  ylab("Happiness (score)") +
+  my_theme +
+  theme(legend.position = "none",
+        plot.margin = unit(c(2, 2, 2, 2), "cm"))
+
+# creates a faceted scatter plot
+clean_df %>%
+  gather(key=measure, value='value', -1) %>%
+  filter(measure != 'sun') %>%
+  ggplot(aes(y=life_ladder, x=value, col=measure)) +
+  geom_point(size = 1, alpha=0.6) +
+  geom_smooth(method='lm', formula=y~x) +
+  ggtitle("Control variables") +
+  facet_wrap(~measure, scales="free") +
+  xlab("") +
+  ylab("Happiness (score)") +
+  my_theme +
+  theme(legend.position = "none")
+
+# runs a basic linear model
+lm1 <- lm(life_ladder ~ ., data=clean_df)
+summary(lm1)
+
+```
+
+<br/>
+
+##### Interpretation
+
+The scatterplot for sunshine hours and happiness appears to be completely random, showing no discernible relationship between the two whatsoever. This is backed up by the regression results, displaying a negative relationship and an extremely high p-value of 0.684. 
+
+<br/>
+
+### **2) European countries:**
+
+Since it could be argued that Sub-Saharan Africa, a region with comparatively lower developmental progress and happiness self-evaluation scores, effectively masks any sunshine hours effect due to its close proximity to the equator, a second regression model was fit on only European countries. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, dpi=600}
+
+# sets the working directory. 
+setwd("C://Users//HUAWEI//Desktop//Projects//The-Pursuit-of-Happiness//Data")
+
+# reads in original dataframe with regional information included. 
+regional_data <- read_xlsx('regional_data_labels.xlsx')
+
+# simplifies regional data labels for readability
+regional_data[regional_data$Region=='Central and Eastern Europe',]$Region <- 'The West'
+regional_data[regional_data$Region=='Western Europe',]$Region <- 'The West'
+regional_data[regional_data$Region=='Latin America and Caribbean',]$Region <- 'Latin America'
+regional_data[regional_data$Region=='Eastern Asia',]$Region <- 'Asia'
+regional_data[regional_data$Region=='Southeastern Asia',]$Region <- 'Asia'
+regional_data[regional_data$Region=='Southern Asia',]$Region <- 'Asia'
+regional_data[regional_data$Region=='Australia and New Zealand',]$Region <- 'The West'
+regional_data[regional_data$Region=='North America',]$Region <- 'The West'
+regional_data[regional_data$Region=='Middle East and Northern Africa',]$Region <- 'MENA'
+
+regional_data %>%
+  ggplot(aes(x=regional_data$`Economy (GDP per Capita)`, y=regional_data$`Happiness Score`, col=Region)) +
+  geom_point(size = 1, alpha=0.6) +
+  xlab('GDP per capita (score)') +
+  ylab('Happiness (score)') +
+  ggtitle('Regional comparison') +
+  my_theme
+
+# creates a list of European countries
+europe <- c('Albania', 'Austria', 'Belgium', 'Bosnia and Herzegovina',
+            'Bulgaria', 'Croatia', 'Cyprus', 'Denmark', 'Estonia',
+            'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland',
+            'Ireland', 'Italy', 'Latvia', 'Lithuania', 'Malta', 'Moldova',
+            'Montenegro', 'Netherlands', 'North Macedonia', 'Norway', 'Poland',
+            'Portugal', 'Romania', 'Serbia', 'Slovakia', 'Slovenia', 'Spain',
+            'Sweden', 'Switzerland', 'Ukraine', 'United Kingdom')
+
+# filters the initial dataframe for European countries
+europe_df <- initial_df[initial_df$`Country name` %in% europe,]
+
+# a working dataframe with only y and x variables
+new_df <- europe_df[y] %>% cbind(europe_df[x]) %>% tibble()
+
+# returns a clean dataframe
+clean_europe_df <- clean_data(new_df)
+
+# checks for remaining na values
+#sum(is.na(clean_europe_df))
+
+# runs a basic linear model
+lm2 <- lm(clean_europe_df$`Life Ladder` ~ ., data=clean_europe_df)
+summary(lm2)
+
+```
+
+<br/>
+
+##### Interpretation
+
+The scatterplot illustrates how Sub-Saharan Africa tends to have both lower economic development and happiness self-evaluation scores. An exclusively European regression model however still fails to find support for a sunshine hours effect, showing a negative relationship and a high p-value of 0.156. 
+
+<br/>
+
+## **Limitations**
+
+Missing values in the World happiness Report data were removed due to the high availability of data. A better approach however would have been to impute them through machine learning predictions based on NA free columns. Also, data for sunshine hours were simulated across multiple years by duplicating a each country's value multiple times. Although these values are not likely to change much each year, this is generally not a good practice and should be avoided where possible.
+
