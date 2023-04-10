@@ -8,6 +8,8 @@ The report can be found [here.](The_Pursuit_of_Happiness.md)
 
 The code can be found [here.](The_Pursuit_of_Happiness.Rmd)
 
+<br/>
+
 **Sources:**
 
 World Happiness Report (2022) https://worldhappiness.report/ed/2022/#appendices-and-data
