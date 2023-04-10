@@ -14,4 +14,4 @@ The code can be found [here.](The_Pursuit_of_Happiness.Rmd)
 
 World Happiness Report (2022) https://worldhappiness.report/ed/2022/#appendices-and-data
 
-Kaggle Sunshine duration by city (2022) https://www.kaggle.com/datasets/prasertk/sunshine-duration-by-city
+Kaggle sunshine hours (2022) https://www.kaggle.com/datasets/prasertk/sunshine-duration-by-city
